@@ -1,0 +1,147 @@
+-- Project Q#1 Finished
+
+
+SELECT TOP 10 WITH TIES
+	A.Name [Artist Name]
+	,SUM(IL.unitPrice*IL.quantity) [Total]
+FROM Invoice I
+JOIN InvoiceLine IL
+	ON I.InvoiceId = IL.InvoiceId
+JOIN Track T
+	ON T.TrackId = IL.TrackId
+JOIN Album AL
+	ON AL.AlbumId = T.AlbumId
+JOIN Artist A
+	ON A.ArtistId = AL.ArtistId
+JOIN MediaType MT
+	ON MT.MediaTypeId = T.MediaTypeId
+WHERE InvoiceDate BETWEEN '07/01/2011' AND '06/01/2012' AND (MT.MediaTypeId <> 3)
+GROUP BY A.Name
+ORDER BY Total DESC
+
+
+-- Project Q#2 Finished
+
+
+SELECT
+	CONCAT(E.FirstName +' ' ,E.LastName) [Employee Name]
+	,YEAR(I.InvoiceDate) [Fiscal Year]
+	,CASE 
+		WHEN DATEPART(Quarter,I.InvoiceDate) = 1 THEN 'First'
+		WHEN DATEPART(Quarter,I.InvoiceDate) = 2 THEN 'Second'
+		WHEN DATEPART(Quarter,I.InvoiceDate) = 3 THEN 'Third'
+		WHEN DATEPART(Quarter,I.InvoiceDate) = 4 THEN 'Fourth'
+		END AS [Sales Quarter]
+	,MAX(I.Total) [Highest Sale]
+	,COUNT(I.InvoiceId) [Number of Sales]
+	,SUM(I.Total) [Total Sales]
+FROM Employee E
+JOIN Customer C
+	ON C.SupportRepId = E.EmployeeId
+JOIN Invoice I
+	ON I.CustomerId = C.CustomerId
+WHERE I.InvoiceDate BETWEEN '01/01/2010' AND '06/01/2012'
+GROUP BY CONCAT(E.FirstName +' ' ,E.LastName),YEAR(I.InvoiceDate),DATEPART(Quarter,I.InvoiceDate) 
+ORDER BY [Employee Name],[Fiscal Year],DATEPART(Quarter,I.InvoiceDate)
+
+
+-- Project Q#3 Finished
+
+
+SELECT
+	P.Name
+	,P.PlaylistId
+	,PT.TrackId
+FROM Playlist P
+FULL JOIN PlaylistTrack PT
+	ON P.PlaylistId = PT.PlaylistId
+WHERE EXISTS(
+		SELECT
+			*
+		FROM Playlist P2
+		GROUP BY P2.Name
+		HAVING COUNT(*) >1
+		AND MAX(P2.PlaylistId) = P.PlaylistId
+			)
+
+-- Project Q#4 Finished
+
+
+SELECT
+	I.BillingCountry [Country]
+	,A.Name [Artist Name]
+	,COUNT(T.TrackID) [Track Count]
+	,COUNT(DISTINCT T.TrackId) [Unique Track Count]
+	,COUNT(T.TrackId) - COUNT(DISTINCT T.TrackId) [Count Difference]
+	,SUM(IL.UnitPrice * IL.Quantity) [Total Revenue]
+	, CASE M.MediaTypeId
+		WHEN 3 THEN 'Video'
+		ELSE 'Audio' END AS [Media Type]
+FROM Artist A
+JOIN Album AL
+	ON A.ArtistId = AL.ArtistId
+JOIN Track T
+	ON T.AlbumId = AL.AlbumId
+JOIN InvoiceLine IL
+	ON T.TrackId = IL.TrackId
+JOIN Invoice I
+	ON I.InvoiceId = IL.InvoiceId
+JOIN MediaType M
+	ON M.MediaTypeId = T.MediaTypeId
+WHERE I.InvoiceDate BETWEEN '07/01/2009' AND '06/01/2013'
+GROUP BY I.BillingCountry, A.Name, CASE M.MediaTypeId
+		WHEN 3 THEN 'Video'
+		ELSE 'Audio' END 
+ORDER BY Country , [Track Count] DESC,[Artist Name] 
+
+
+
+-- Project Q#5 Finished
+
+SELECT
+	CONCAT(Firstname,' ',LastName) [Full Name]
+	,CONVERT(Varchar,BirthDate,1) [BirthDate] 
+	,CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),1) AS [Birth Day 2016]
+	,DATENAME(Weekday,CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)) AS [Birth Day of Week]
+	,CASE
+		WHEN DATENAME(Weekday,CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)) = 'Saturday'
+			THEN CONVERT(varchar,(DATEADD(Day,2,(CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)))),101) 
+		WHEN DATENAME(Weekday,CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)) = 'Sunday'
+			THEN CONVERT(varchar,(DATEADD(Day,1,(CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)))),101) 
+		ELSE CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101) 
+		END AS 'Celebration Day'
+	,CASE	
+		WHEN DATENAME(Weekday,CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)) = 'Saturday'
+			THEN 'Monday' 
+		WHEN DATENAME(Weekday,CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)) = 'Sunday'
+			THEN 'Monday' 
+		ELSE DATENAME(Weekday,CONVERT(varchar,(DATEFROMPARTS(2016,(Month(Birthdate)),(Day(Birthdate)))),101)) 
+		END AS 'Celebration Day of Week'
+FROM Employee E
+ORDER BY E.BirthDate DESC, E.LastName
+
+
+-- Project Q#6 Finished
+
+
+SELECT
+	M.Name [Media Type]
+	,G.Name [Genre]
+	,COUNT(DISTINCT T.TrackId) [Unique Track Count]
+	,COUNT(IL.TrackId) [Tracks Purchased Count]
+	,ISNULL(SUM(IL.UnitPrice),0) [Total Revenue]
+	,CAST((COUNT(IL.TrackID)/CAST(COUNT(DISTINCT(T.TrackID))AS decimal (10,2)))AS decimal (10,2))*100 AS 'Percentile'
+FROM Track T
+JOIN MediaType M
+	ON T.MediaTypeId = M.MediaTypeId
+JOIN Genre G
+	ON G.GenreId = T.GenreId
+FULL JOIN InvoiceLine IL
+	ON IL.Trackid = T.TrackId
+FULL JOIN Invoice I
+	ON I.InvoiceId = IL.InvoiceId
+GROUP BY M.Name, G.Name
+HAVING ISNULL(SUM(IL.UnitPrice),0) < 10
+	OR CAST((COUNT(IL.TrackID)/CAST(COUNT(DISTINCT(T.TrackID))AS decimal (10,2)))AS decimal (10,2))*100 < 50
+ORDER BY ISNULL(SUM(IL.UnitPrice),0) , G.Name , [Percentile] DESC
+
